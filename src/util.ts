@@ -293,10 +293,29 @@ export function getFileArchive(document: vscode.TextDocument): string {
 
 export function getToolsEnvVars(): any {
 	let toolsEnvVars = vscode.workspace.getConfiguration('go')['toolsEnvVars'];
+	let inferredGopath = getInferredGopath();
+	let configGopath = vscode.workspace.getConfiguration('go')['gopath'];
+	let gopath = inferredGopath ? inferredGopath : (configGopath ? resolvePath(configGopath, vscode.workspace.rootPath) : '');
+
+	let envVars = Object.assign({}, process.env, gopath ? { GOPATH: gopath } : {});
+
 	if (!toolsEnvVars || typeof toolsEnvVars !== 'object' || Object.keys(toolsEnvVars).length === 0) {
-		return process.env;
+		return envVars;
 	}
-	return Object.assign({}, process.env, toolsEnvVars);
+	return Object.assign(envVars, toolsEnvVars);
+}
+
+function getInferredGopath(): string {
+	let inferGoPath = vscode.workspace.getConfiguration('go')['inferGopath'];
+	if (inferGoPath) {
+		let dirs = vscode.workspace.rootPath.toLowerCase().split(path.sep);
+		// find src directory closest to workspace root
+		let srcIdx = dirs.lastIndexOf('src');
+
+		if (srcIdx > 0) {
+			return vscode.workspace.rootPath.substr(0, dirs.slice(0, srcIdx).join(path.sep).length);
+		}
+	}
 }
 
 export function getExtensionCommands(): any[] {

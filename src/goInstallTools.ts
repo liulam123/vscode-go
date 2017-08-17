@@ -223,40 +223,23 @@ export function updateGoPathGoRootFromConfig(): Promise<void> {
 		process.env['GOROOT'] = goroot;
 	}
 
-	let gopath = vscode.workspace.getConfiguration('go')['gopath'];
-	if (gopath) {
-		process.env['GOPATH'] = resolvePath(gopath, vscode.workspace.rootPath);
-	}
-
-	let inferGoPath = vscode.workspace.getConfiguration('go')['inferGopath'];
-	if (inferGoPath) {
-		let dirs = vscode.workspace.rootPath.toLowerCase().split(path.sep);
-		// find src directory closest to workspace root
-		let srcIdx = dirs.lastIndexOf('src');
-
-		if (srcIdx > 0) {
-			process.env['GOPATH'] = vscode.workspace.rootPath.substr(0, dirs.slice(0, srcIdx).join(path.sep).length);
-		}
-	}
-
-	if (process.env['GOPATH']) {
-		return Promise.resolve();
-	}
-
-	// If GOPATH is still not set, then use the one from `go env`
-	let goRuntimePath = getGoRuntimePath();
-	return new Promise<void>((resolve, reject) => {
-		cp.execFile(goRuntimePath, ['env', 'GOPATH'], (err, stdout, stderr) => {
-			if (err) {
-				return reject();
-			}
-			let envOutput = stdout.split('\n');
-			if (!process.env['GOPATH'] && envOutput[0].trim()) {
-				process.env['GOPATH'] = envOutput[0].trim();
-			}
-			return resolve();
+	if (!process.env['GOPATH']) {
+		// If GOPATH is still not set, then use the one from `go env`
+		let goRuntimePath = getGoRuntimePath();
+		return new Promise<void>((resolve, reject) => {
+			cp.execFile(goRuntimePath, ['env', 'GOPATH'], (err, stdout, stderr) => {
+				if (err) {
+					return reject();
+				}
+				let envOutput = stdout.split('\n');
+				if (envOutput[0].trim()) {
+					process.env['GOPATH'] = envOutput[0].trim();
+				}
+				return resolve();
+			});
 		});
-	});
+	}
+
 }
 
 export function offerToInstallTools() {
